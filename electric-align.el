@@ -44,18 +44,18 @@
 
 (defun electric-align-electric-del (arg)
   (interactive "P")
-  (undo-boundary)
-  (align-current)
   ;;todo find & save keymap
   (call-interactively 'backward-delete-char-untabify)
+  (undo-boundary)
+  (align-current)
   )
 
 (defun electric-align-electric-deletechar (N)
   (interactive "P")
-  (undo-boundary)
-  (align-current)
   ;;todo find & save keymap
   (call-interactively 'delete-char)
+  (undo-boundary)
+  (align-current)
   )
 
 ;; set-temporary-overlay-map is inactive when other key
@@ -77,33 +77,105 @@
   (if electric-align-mode
       (progn
         ;;(add-hook 'after-change-functions #'electric-align-electric nil t)
-        (add-hook 'post-self-insert-hook #'electric-align-electric)
+        (add-hook 'post-self-insert-hook #'electric-align-electric t)
         )
     ;;(remove-hook 'after-change-functions #'electric-align-electric t)
-    (remove-hook 'post-self-insert-hook #'electric-align-electric t)
+    (remove-hook 'post-self-insert-hook #'electric-align-electric)
     ))
 
-(define-minor-mode electric-align-mode
-  "Toggle electric align . "
-  :lighter " EA"
-  :group 'electric-align
-  (if electric-align-mode
-      (progn
-        ;;(add-hook 'after-change-functions #'electric-align-electric nil t)
-        (add-hook 'post-self-insert-hook #'electric-align-electric)
-        )
-    ;;(remove-hook 'after-change-functions #'electric-align-electric t)
-    (remove-hook 'post-self-insert-hook #'electric-align-electric t)
-    ))
 ;; (align-current '((c++-comment-end
-;;                   (regexp . "\\(?:/\\*.*\\)\\( *\\)*\\*/")
+;;                   (regexp . "\\(?:/\\*.*\\)\\(\\s-*\\)\\*/")
 ;;                   (modes . align-c++-modes)
 ;;                   )))
-
 ;; bug in delete-forward
+;;https://google-styleguide.googlecode.com/svn/trunk/google-c-style.el
+;;http://masutaka.net/chalow/2009-07-16-1.html
+;;http://tuhdo.github.io/c-ide.html
+;; (align-current '((c++-comment-end
+;;                   (regexp . "/\\*.*\\(\\s-*\\)\\*/\\(\\s-*\\)$");;"/\\*.*[^ ]\\(\\s-*\\)\\(\\*/\\s-*\\)$");;"/\\*.*?\\(\\s-*\\)
+;;                   ;;
+;;                   ;;"/\\*.*\\(\\s-*\\)\\(\\*/\\s-*\\)$")
+;;                   (group 1 2)
+;;                   (modes . align-c++-modes)
+;;                   (justify . t)
+;;                   (tab-stop)
+;;                   ;;(spacing . 0)
+;;                   )))
+;; (defun foo (end reverse)
+;;   (funcall (if reverse 're-search-backward
+;;              're-search-forward)
+;;            (concat "[^ \t\n\\\\]"
+;;                    (regexp-quote comment-start)
+;;                    "\\(.+\\)$") end t))
+
+;; (align-current '((c++-comment-end
+;;                   ;;(regexp . "/\\*.*?\\(\\s-*\\)\\*/\\(\\s-*$\\)")
+;;                   (regexp . foo)
+;;                           ;;"/\\*.*[^ ]\\(\\s-*\\)\\(\\*/\\s-*\\)$")
+;;                   ;;"/\\*.*\\(\\s-*\\)\\(\\*/\\s-*\\)$")
+;;                   (group . (1 2))
+;;                   (modes . align-c++-modes)
+;;                   (justify . t)
+;;                   (tab-stop . nil)
+;;                   (spacing . 0)
+;;                   )))
+
+;; (align-current '((c++-comment-end
+;;                   (regexp . "\\(\\s-*\\)\\*/")))
+;;                '())
+
+;; (align-current '((c++-comment-end
+;;                   (regexp . "\\(\\s-*\\)\\*/")))
+               ;; '((exc-dq-string
+               ;;    (regexp . "\"\\([^\"\n]+\\)\"")
+               ;;    (repeat . t)
+               ;;    (modes  . align-dq-string-modes))))
+
+;; (align-current '((c++-comment-end
+;;                   (regexp . "\\(\\s-*\\)\\*/")))
+;;                '((exc-c-comment
+;;                   (regexp . "/\\*\\(.+\\)\\*/")
+;;                   (repeat . t)
+;;                   (modes . align-c++-modes))))
+;; (exc-c-comment
+;;  (regexp . "/\\*\\(.+\\)\\*/")
+;;  (repeat . t)
+;;  (modes . align-c++-modes))
+;; align-exclude-rules-list
+
+(align-current `((open-comment
+                  (regexp . ,(function
+                                (lambda (end reverse)
+                                  (funcall (if reverse 're-search-backward
+                                             're-search-forward)
+                                           (concat "[^ \t\n\\\\]"
+                                                   (regexp-quote comment-start)
+                                                   "\\(.+\\)$") end t))))
+                  (modes . align-open-comment-modes)))
+               '((exc-dq-string
+                 (regexp . "\"\\([^\"\n]+\\)\"")
+                 (repeat . t)
+                 (modes  . align-dq-string-modes)))
+               )
+;;"\\(/\\*\\)\\([ ]?[^ ]\\)*\\(\\s-*\\)\\(\\*/\\)\\(\\s-*$\\)"
+;; (c-assignment
+;;  (regexp   . ,(concat "[^-=!^&*+<>/| \t\n]\\(\\s-*[-=!^&*+<>/|]*\\)"
+;;                       "=\\(\\s-*\\)\\([^= \t\n]\\|$\\)"))
+;;  (group    . (1 2))
+;;  (modes    . align-c++-modes)
+;;  (justify  . t)
+;;  (tab-stop . nil))
+"[^-=!^&*+<>/| \t\n]\\(\\s-*[-=!^&*+<>/|]*\\)=\\(\\s-*\\)\\([^= \t\n]\\|$\\)"
+
 (add-to-list 'align-rules-list
              '(c++-comment-end
-               (regexp . "\\(?:/\\*.*\\)\\( *\\)*\\*/\\s-*$")
-               ;;(regexp . "\\(?:/\\*.*\\)\\( *\\)*\\*/")
-               (modes . align-c++-modes))
+               (regexp  . "/\\*.*\\(\\s-*\\)\\(\\*/\\s-*\\)$")
+               (spacing . 0)
+               (modes   . align-c++-modes))
              t)
+;;(assoc 'c++-comment align-rules-list)
+
+;;https://news.ycombinator.com/item?id=333626
+;;http://nickgravgaard.com/elastic-tabstops/
+(provide 'electric-align)
+;;; electric-align.el ends here

@@ -37,35 +37,36 @@
 
 ;;; Code:
 (defun electric-align-electric ();;(beg end length)
-  (undo-boundary)
-  (align-current)
-  ;;(font-lock-fontify-buffer)
-  )
+  (unless (minibufferp)
+    (undo-boundary)
+    (indent-region
+     (point)
+     (save-excursion
+       (ignore-errors (forward-list))
+       (point)))
+    (align-current)
+    ;;(font-lock-fontify-buffer)
+    ))
 
 (defun electric-align-electric-del (arg)
   (interactive "P")
   ;;todo find & save keymap
   (call-interactively 'backward-delete-char-untabify)
-  (undo-boundary)
-  (align-current)
+  (electric-align-electric)
   )
 
 (defun electric-align-electric-deletechar (N)
   (interactive "P")
   ;;todo find & save keymap
   (call-interactively 'delete-char)
-  (undo-boundary)
-  (align-current)
+  (electric-align-electric)
   )
 
-;; set-temporary-overlay-map is inactive when other key
-;;minor mode map
-;;(kbd "<deletechar>")
-;;(kbd "<DEL>")
 (defvar electric-align-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "<DEL>") 'electric-align-electric-del);;backward
     (define-key map (kbd "C-d") 'electric-align-electric-deletechar);;forward
+    ;; <deletechar>?
     map)
   "Keymap used by `electric-align-mode'.")
 
@@ -76,106 +77,42 @@
   :group 'electric-align
   (if electric-align-mode
       (progn
-        ;;(add-hook 'after-change-functions #'electric-align-electric nil t)
+        ;; after-change-functions cannot undo
         (add-hook 'post-self-insert-hook #'electric-align-electric t)
         )
-    ;;(remove-hook 'after-change-functions #'electric-align-electric t)
     (remove-hook 'post-self-insert-hook #'electric-align-electric)
     ))
 
-;; (align-current '((c++-comment-end
-;;                   (regexp . "\\(?:/\\*.*\\)\\(\\s-*\\)\\*/")
-;;                   (modes . align-c++-modes)
-;;                   )))
-;; bug in delete-forward
-;;https://google-styleguide.googlecode.com/svn/trunk/google-c-style.el
-;;http://masutaka.net/chalow/2009-07-16-1.html
-;;http://tuhdo.github.io/c-ide.html
-;; (align-current '((c++-comment-end
-;;                   (regexp . "/\\*.*\\(\\s-*\\)\\*/\\(\\s-*\\)$");;"/\\*.*[^ ]\\(\\s-*\\)\\(\\*/\\s-*\\)$");;"/\\*.*?\\(\\s-*\\)
-;;                   ;;
-;;                   ;;"/\\*.*\\(\\s-*\\)\\(\\*/\\s-*\\)$")
-;;                   (group 1 2)
-;;                   (modes . align-c++-modes)
-;;                   (justify . t)
-;;                   (tab-stop)
-;;                   ;;(spacing . 0)
-;;                   )))
-;; (defun foo (end reverse)
-;;   (funcall (if reverse 're-search-backward
-;;              're-search-forward)
-;;            (concat "[^ \t\n\\\\]"
-;;                    (regexp-quote comment-start)
-;;                    "\\(.+\\)$") end t))
+;; https://google-styleguide.googlecode.com/svn/trunk/google-c-style.el
+;; http://masutaka.net/chalow/2009-07-16-1.html
+;; http://tuhdo.github.io/c-ide.html
+;; http://postd.cc/why-i-vertically-align-my-code-and-you-should-too/
+;; https://news.ycombinator.com/item?id=333626
+;; http://nickgravgaard.com/elastic-tabstops/
 
-;; (align-current '((c++-comment-end
-;;                   ;;(regexp . "/\\*.*?\\(\\s-*\\)\\*/\\(\\s-*$\\)")
-;;                   (regexp . foo)
-;;                           ;;"/\\*.*[^ ]\\(\\s-*\\)\\(\\*/\\s-*\\)$")
-;;                   ;;"/\\*.*\\(\\s-*\\)\\(\\*/\\s-*\\)$")
-;;                   (group . (1 2))
-;;                   (modes . align-c++-modes)
-;;                   (justify . t)
-;;                   (tab-stop . nil)
-;;                   (spacing . 0)
-;;                   )))
-
-;; (align-current '((c++-comment-end
-;;                   (regexp . "\\(\\s-*\\)\\*/")))
-;;                '())
-
-;; (align-current '((c++-comment-end
-;;                   (regexp . "\\(\\s-*\\)\\*/")))
-               ;; '((exc-dq-string
-               ;;    (regexp . "\"\\([^\"\n]+\\)\"")
-               ;;    (repeat . t)
-               ;;    (modes  . align-dq-string-modes))))
-
-;; (align-current '((c++-comment-end
-;;                   (regexp . "\\(\\s-*\\)\\*/")))
-;;                '((exc-c-comment
-;;                   (regexp . "/\\*\\(.+\\)\\*/")
-;;                   (repeat . t)
-;;                   (modes . align-c++-modes))))
-;; (exc-c-comment
-;;  (regexp . "/\\*\\(.+\\)\\*/")
-;;  (repeat . t)
-;;  (modes . align-c++-modes))
-;; align-exclude-rules-list
-
-(align-current `((open-comment
-                  (regexp . ,(function
-                                (lambda (end reverse)
-                                  (funcall (if reverse 're-search-backward
-                                             're-search-forward)
-                                           (concat "[^ \t\n\\\\]"
-                                                   (regexp-quote comment-start)
-                                                   "\\(.+\\)$") end t))))
-                  (modes . align-open-comment-modes)))
-               '((exc-dq-string
-                 (regexp . "\"\\([^\"\n]+\\)\"")
-                 (repeat . t)
-                 (modes  . align-dq-string-modes)))
-               )
-;;"\\(/\\*\\)\\([ ]?[^ ]\\)*\\(\\s-*\\)\\(\\*/\\)\\(\\s-*$\\)"
-;; (c-assignment
-;;  (regexp   . ,(concat "[^-=!^&*+<>/| \t\n]\\(\\s-*[-=!^&*+<>/|]*\\)"
-;;                       "=\\(\\s-*\\)\\([^= \t\n]\\|$\\)"))
-;;  (group    . (1 2))
-;;  (modes    . align-c++-modes)
-;;  (justify  . t)
-;;  (tab-stop . nil))
-"[^-=!^&*+<>/| \t\n]\\(\\s-*[-=!^&*+<>/|]*\\)=\\(\\s-*\\)\\([^= \t\n]\\|$\\)"
+(align-current '((c++-comment-end
+                  (regexp . "/\\*.*?\\(\\s-*\\)\\*/\\s-*$")
+                  (modes  . align-c++-modes)
+                  ))
+               '((exc-c-comment
+                  (regexp . "/\\*\\(.*?\\) *.\\*/")
+                  (repeat . t)
+                  (modes  . align-c++-modes))))
+;; (assoc 'exc-c-comment align-exclude-rules-list)
+(setq align-exclude-rules-list
+      (append
+       (assq-delete-all 'exc-c-comment align-exclude-rules-list)
+       '((exc-c-comment
+          (regexp . "/\\*\\(.*?\\) *.\\*/")
+          (repeat . t)
+          (modes  . align-c++-modes)))))
 
 (add-to-list 'align-rules-list
              '(c++-comment-end
-               (regexp  . "/\\*.*\\(\\s-*\\)\\(\\*/\\s-*\\)$")
-               (spacing . 0)
-               (modes   . align-c++-modes))
+               (regexp . "/\\*.*?\\(\\s-*\\)\\*/\\s-*$")
+               (modes  . align-c++-modes))
              t)
 ;;(assoc 'c++-comment align-rules-list)
 
-;;https://news.ycombinator.com/item?id=333626
-;;http://nickgravgaard.com/elastic-tabstops/
 (provide 'electric-align)
 ;;; electric-align.el ends here
